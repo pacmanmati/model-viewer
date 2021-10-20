@@ -68,61 +68,7 @@ impl Application {
                     accum_time = 0.0;
                     frame_count = 0;
                 }
-                // render here
-                let frame = match self.renderer.surface.get_current_texture() {
-                    Ok(frame) => frame,
-                    Err(_) => {
-                        self.renderer
-                            .surface
-                            .configure(&self.renderer.device, &self.renderer.surface_config);
-                        self.renderer
-                            .surface
-                            .get_current_texture()
-                            .expect("Failed to acquire next surface texture.")
-                    }
-                };
-                let view = frame
-                    .texture
-                    .create_view(&wgpu::TextureViewDescriptor::default());
-                let mut encoder = self
-                    .renderer
-                    .device
-                    .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-                {
-                    let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                        label: Some("Render Pass"),
-                        color_attachments: &[wgpu::RenderPassColorAttachment {
-                            view: &view,
-                            resolve_target: None,
-                            ops: wgpu::Operations {
-                                load: wgpu::LoadOp::Clear(wgpu::Color {
-                                    r: 0.1,
-                                    g: 0.1,
-                                    b: 0.6,
-                                    a: 1.0,
-                                }),
-                                store: true,
-                            },
-                        }],
-                        depth_stencil_attachment: None,
-                    });
-                    rpass.push_debug_group("preparing data for drawing...");
-                    rpass.set_pipeline(self.renderer.active_pipeline.as_ref().unwrap());
-                    rpass.set_bind_group(0, self.renderer.bind_group.as_ref().unwrap(), &[]);
-                    rpass.set_index_buffer(
-                        self.renderer.index_buffer.as_ref().unwrap().slice(..),
-                        wgpu::IndexFormat::Uint32,
-                    );
-                    rpass.set_vertex_buffer(
-                        0,
-                        self.renderer.vertex_buffer.as_ref().unwrap().slice(..),
-                    );
-                    rpass.pop_debug_group();
-                    rpass.insert_debug_marker("drawing");
-                    rpass.draw_indexed(0..self.renderer.index_count as u32, 0, 0..1);
-                }
-                self.renderer.queue.submit(Some(encoder.finish()));
-                frame.present();
+                Renderer::draw_cube(&self.renderer);
             }
             Event::MainEventsCleared => {}
             _ => {}

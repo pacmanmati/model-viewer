@@ -220,6 +220,60 @@ impl Renderer {
         self.bind_group = Some(bind_group);
     }
 
+    pub fn draw_cube(renderer: &Renderer) {
+        // render here
+        let frame = match renderer.surface.get_current_texture() {
+            Ok(frame) => frame,
+            Err(_) => {
+                renderer
+                    .surface
+                    .configure(&renderer.device, &renderer.surface_config);
+                renderer
+                    .surface
+                    .get_current_texture()
+                    .expect("Failed to acquire next surface texture.")
+            }
+        };
+        let view = frame
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+        let mut encoder = renderer
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        {
+            let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Render Pass"),
+                color_attachments: &[wgpu::RenderPassColorAttachment {
+                    view: &view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: 0.1,
+                            g: 0.1,
+                            b: 0.6,
+                            a: 1.0,
+                        }),
+                        store: true,
+                    },
+                }],
+                depth_stencil_attachment: None,
+            });
+            rpass.push_debug_group("preparing data for drawing...");
+            rpass.set_pipeline(renderer.active_pipeline.as_ref().unwrap());
+            rpass.set_bind_group(0, renderer.bind_group.as_ref().unwrap(), &[]);
+            rpass.set_index_buffer(
+                renderer.index_buffer.as_ref().unwrap().slice(..),
+                wgpu::IndexFormat::Uint32,
+            );
+            rpass.set_vertex_buffer(0, renderer.vertex_buffer.as_ref().unwrap().slice(..));
+            rpass.pop_debug_group();
+            rpass.insert_debug_marker("drawing");
+            rpass.draw_indexed(0..renderer.index_count as u32, 0, 0..1);
+        }
+        renderer.queue.submit(Some(encoder.finish()));
+        frame.present();
+    }
+
     fn generate_matrix(aspect_ratio: f32) -> cgmath::Matrix4<f32> {
         let mx_projection = cgmath::perspective(cgmath::Deg(45f32), aspect_ratio, 1.0, 10.0);
         let mx_view = cgmath::Matrix4::look_at_rh(
